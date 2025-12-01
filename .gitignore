@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.venv
+venv/
+env/
+
+# macOS
+.DS_Store
+
+# VSCode / editors
+.vscode/
+.idea/
+
+# Outputs
+outputs/
+*.xlsx
