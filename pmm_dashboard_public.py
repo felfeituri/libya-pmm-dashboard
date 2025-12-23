@@ -44,7 +44,7 @@ def get_engine():
         f"postgresql://{DB_CONFIG['user']}:{DB_CONFIG['password']}"
         f"@{DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}"
     )
-    return create_engine(conn_string)
+    return create_engine(conn_string, pool_pre_ping=True, connect_args={'options': '-c search_path=public'})
 
 # ============================================================================
 # WFP BRANDING COLORS
@@ -73,7 +73,7 @@ def get_latest_date():
     engine = get_engine()
     with engine.connect() as conn:
         result = conn.execute(
-            text("SELECT MAX(date) FROM national_meb WHERE full_meb IS NOT NULL AND full_meb > 0")
+            text("SELECT MAX(date) FROM public.national_meb WHERE full_meb IS NOT NULL AND full_meb > 0")
         )
         return result.scalar()
 
@@ -83,7 +83,7 @@ def get_date_range():
     with engine.connect() as conn:
         result = conn.execute(text("""
             SELECT MIN(date) as min_date, MAX(date) as max_date 
-            FROM national_meb 
+            FROM public.national_meb 
             WHERE full_meb IS NOT NULL AND full_meb > 0
         """))
         row = result.fetchone()
@@ -106,12 +106,12 @@ def get_national_overview(target_date, region_scope='National'):
     if region_scope == 'National':
         current_query = text("""
             SELECT food_meb, nfi_meb, full_meb
-            FROM national_meb
+            FROM public.national_meb
             WHERE date = :date
         """)
         prev_query = text("""
             SELECT food_meb, nfi_meb, full_meb
-            FROM national_meb
+            FROM public.national_meb
             WHERE date = :date
         """)
         cur_params = {'date': target_date}
@@ -120,12 +120,12 @@ def get_national_overview(target_date, region_scope='National'):
         # Regional KPIs from regional_meb
         current_query = text("""
             SELECT food_meb, nfi_meb, full_meb
-            FROM regional_meb
+            FROM public.regional_meb
             WHERE date = :date AND region = :region
         """)
         prev_query = text("""
             SELECT food_meb, nfi_meb, full_meb
-            FROM regional_meb
+            FROM public.regional_meb
             WHERE date = :date AND region = :region
         """)
         cur_params = {'date': target_date, 'region': region_scope}
@@ -174,8 +174,8 @@ def get_municipality_data(target_date):
             l.x as longitude,
             l.y as latitude,
             l.adm1_en as region
-        FROM municipality_meb m
-        JOIN locations l ON m.adm2_pcode = l.adm2_pcode
+        FROM public.municipality_meb m
+        JOIN public.locations l ON m.adm2_pcode = l.adm2_pcode
         WHERE m.date = :date
         AND m.full_meb IS NOT NULL
         AND m.full_meb > 0
@@ -203,7 +203,7 @@ def get_trend_data(meb_type='full_meb', months=12):
     # National trends
     nat_query = text(f"""
         SELECT date, {meb_type}
-        FROM national_meb
+        FROM public.national_meb
         WHERE {meb_type} IS NOT NULL AND {meb_type} > 0
         ORDER BY date DESC
         LIMIT :months
@@ -212,7 +212,7 @@ def get_trend_data(meb_type='full_meb', months=12):
     # Regional trends
     reg_query = text(f"""
         SELECT date, region, {meb_type}
-        FROM regional_meb
+        FROM public.regional_meb
         WHERE {meb_type} IS NOT NULL AND {meb_type} > 0
         ORDER BY region, date DESC
     """)
@@ -245,7 +245,7 @@ def get_commodity_data(target_date):
             category,
             admin_name as region,
             average_price
-        FROM products
+        FROM public.products
         WHERE date = :date
         ORDER BY category, product_name
     """)
@@ -277,8 +277,8 @@ def get_municipality_heatmap_data(meb_type='full_meb', scope_region='National'):
             m.food_meb,
             m.nfi_meb,
             m.full_meb
-        FROM municipality_meb m
-        JOIN locations l ON m.adm2_pcode = l.adm2_pcode
+        FROM public.municipality_meb m
+        JOIN public.locations l ON m.adm2_pcode = l.adm2_pcode
         WHERE m.full_meb IS NOT NULL
           AND m.full_meb > 0
     """
@@ -664,7 +664,7 @@ def populate_date_selector(_):
     
     query = text("""
         SELECT DISTINCT date 
-        FROM national_meb 
+        FROM public.national_meb 
         WHERE full_meb IS NOT NULL AND full_meb > 0
         ORDER BY date DESC
     """)
@@ -1138,8 +1138,8 @@ def update_rankings_table(selected_date, region_scope, change_type):
             m.nfi_meb,
             m.full_meb,
             l.adm1_en as region
-        FROM municipality_meb m
-        JOIN locations l ON m.adm2_pcode = l.adm2_pcode
+        FROM public.municipality_meb m
+        JOIN public.locations l ON m.adm2_pcode = l.adm2_pcode
         WHERE m.date = :date
           AND m.full_meb IS NOT NULL
           AND m.full_meb > 0
