@@ -16,6 +16,7 @@ Usage:
 Then open browser to: http://127.0.0.1:8051
 """
 import os
+from urllib.parse import quote_plus
 import dash
 from dash import dcc, html, Input, Output, State, dash_table
 import plotly.graph_objects as go
@@ -39,12 +40,16 @@ DB_CONFIG = {
 }
 
 def get_engine():
-    """Create SQLAlchemy engine"""
-    conn_string = (
-        f"postgresql://{DB_CONFIG['user']}:{DB_CONFIG['password']}"
-        f"@{DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}"
-    )
-    return create_engine(conn_string, pool_pre_ping=True, connect_args={'options': '-c search_path=public'})
+    """Create SQLAlchemy engine (Neon-safe)"""
+    user = quote_plus(DB_CONFIG.get("user") or "")
+    password = quote_plus(DB_CONFIG.get("password") or "")
+    host = DB_CONFIG.get("host")
+    port = DB_CONFIG.get("port")
+    database = DB_CONFIG.get("database")
+
+    # Force SSL for Neon and avoid startup parameters not supported by Neon pooled connections
+    conn_string = f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{database}?sslmode=require"
+    return create_engine(conn_string, pool_pre_ping=True)
 
 # ============================================================================
 # WFP BRANDING COLORS
